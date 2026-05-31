@@ -103,9 +103,17 @@ public class ImageConverter {
 
         // Step 2: Apply mini tile substitution (convert to Godot format - 192x144)
         BufferedImage outputCanvas = new BufferedImage(12 * TILE_WIDTH, (isClifMode? 8 :4) * TILE_HEIGHT, BufferedImage.TYPE_INT_ARGB);
-        applySubtileData(tempCanvas, outputCanvas);
 
-        if(isClifMode){
+        MiniTileEntry[] miniTilesToGodotData = isClifMode? createMiniTilesToGodotDataWithClif(): createMiniTilesToGodotData();
+
+        doConvetMiniTileToGodot(tempCanvas, outputCanvas, miniTilesToGodotData);
+        doConvertClif(tempCanvas, outputCanvas);
+
+        return outputCanvas;
+    }
+
+    private void doConvertClif(BufferedImage tempCanvas, BufferedImage outputCanvas) {
+        if(isClifMode){//copy Clif tile
              copyClifHalfTile(tempCanvas, outputCanvas, new Vec2d(0, 3), HalfSection.LEFT, new Vec2d(0, 1), HalfSection.LEFT);
              copyClifHalfTile(tempCanvas, outputCanvas, new Vec2d(0, 3), HalfSection.RIGHT, new Vec2d(1, 1), HalfSection.RIGHT);
              //-----------------------------
@@ -154,17 +162,7 @@ public class ImageConverter {
              copyClifHalfTile(tempCanvas, outputCanvas, new Vec2d(11, 4), HalfSection.LEFT, new Vec2d(1, 1), HalfSection.LEFT);
              copyClifHalfTile(tempCanvas, outputCanvas, new Vec2d(11, 4), HalfSection.RIGHT, new Vec2d(1, 1), HalfSection.RIGHT);
          }
-
-        return outputCanvas;
     }
-
-
-
-
-
-
-
-
 
 
     /**
@@ -367,8 +365,7 @@ public class ImageConverter {
     /**
      * Apply mini tile substitution mapping
      */
-    private void applySubtileData(BufferedImage srcImg, BufferedImage dstImg) {
-        MiniTileEntry[] miniTilesToGodotData = createMiniTilesToGodotDataWithClif();
+    private void doConvetMiniTileToGodot(BufferedImage srcImg, BufferedImage dstImg, MiniTileEntry[] miniTilesToGodotData) {
         for (MiniTileEntry entry : miniTilesToGodotData) {
             for (TileSection section : TileSection.values()) {
                 copyTileSection(srcImg, dstImg, entry.targetTile, section, entry.tileData);

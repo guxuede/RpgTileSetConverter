@@ -1,6 +1,8 @@
 package org.greg.image;
 
 import com.sun.javafx.geom.Vec2d;
+import javafx.animation.FadeTransition;
+import javafx.animation.StrokeTransition;
 import javafx.application.Application;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
@@ -8,20 +10,18 @@ import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Spinner;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.MouseButton;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -40,10 +40,10 @@ import java.util.List;
  */
 public class ImageConverterUI extends Application {
 
-    private ImageConverter converter = new ImageConverter();
 
     private BufferedImage originalImage;
     private ImageView sourceImageView;
+    private Rectangle sourceImageCursor;
     private Label statusLabel;
 
     private Spinner<Integer> leftOffsetSpinner;
@@ -51,6 +51,7 @@ public class ImageConverterUI extends Application {
     private Spinner<Integer> topOffsetSpinner;
     private Spinner<Integer> bottomOffsetSpinner;
 
+    private CheckBox hasClifCheckBox;
     private Spinner<Integer> numberTileSetWantedSpinner;
     private Spinner<Integer> tileSetXNumberSpinner;
     private Spinner<Integer> tileSetYNumberSpinner;
@@ -112,6 +113,8 @@ public class ImageConverterUI extends Application {
         primaryStage.show();
     }
 
+    private double offsetX, offsetY;
+
     private VBox createSourcePanel() {
         VBox panel = new VBox(10);
         panel.setPadding(new Insets(10));
@@ -121,19 +124,55 @@ public class ImageConverterUI extends Application {
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
 
         sourceImageView = new ImageView();
-        sourceImageView.setFitWidth(350);
-        sourceImageView.setFitHeight(350);
-        sourceImageView.setPreserveRatio(true);
+//        sourceImageView.setFitWidth(350);
+//        sourceImageView.setFitHeight(350);
+//        sourceImageView.setPreserveRatio(true);
         sourceImageView.setStyle("-fx-border-color: #999999;");
+        sourceImageView.setOnMouseClicked(e -> {
+            if(e.getButton().equals(MouseButton.PRIMARY)){
+                onSourceImageViewClick(e);
+            }
+        });
+
+        sourceImageCursor = new Rectangle();
+        sourceImageCursor.setLayoutX(0);
+        sourceImageCursor.setLayoutY(0);
+        sourceImageCursor.setWidth(48*2);
+        sourceImageCursor.setHeight(48*3);
+        sourceImageCursor.setFill(Color.TRANSPARENT);
+        sourceImageCursor.setStroke(Color.CORAL);
+        sourceImageCursor.setStrokeWidth(3);
+        sourceImageCursor.getStrokeDashArray().addAll(8.0,4.0);
+        sourceImageCursor.toFront();
+        sourceImageCursor.setManaged(false);
+        sourceImageCursor.setVisible(false);
+        FadeTransition flash = new FadeTransition(Duration.millis(500), sourceImageCursor);
+        flash.setFromValue(1.0);
+        flash.setToValue(0.2);
+        flash.setCycleCount(-1); // 无限循环
+        flash.setAutoReverse(true);
+        flash.play();
+        StrokeTransition colorAnim = new StrokeTransition(
+                Duration.seconds(1),
+                sourceImageCursor,
+                Color.CORAL,Color.CYAN
+        );
+        colorAnim.setCycleCount(-1);
+        colorAnim.setAutoReverse(true);
+        colorAnim.play();
+
+        StackPane sourceImagePane = new StackPane(sourceImageView, sourceImageCursor);
+        sourceImagePane.setAlignment(Pos.TOP_LEFT);
 
         Button loadButton = new Button("Load Image");
         loadButton.setStyle("-fx-font-size: 12; -fx-padding: 8;");
         loadButton.setPrefWidth(200);
         loadButton.setOnAction(e -> loadImage());
 
-        panel.getChildren().addAll(title, sourceImageView, loadButton);
+        panel.getChildren().addAll(title, sourceImagePane, loadButton);
         return panel;
     }
+
 
     private VBox createOutputPanel() {
         VBox panel = new VBox(10);
@@ -152,39 +191,39 @@ public class ImageConverterUI extends Application {
 
     private VBox createControlPanel() {
         VBox panel = new VBox(15);
-        panel.setPadding(new Insets(10));
+        panel.setPadding(new Insets(5));
         panel.setStyle("-fx-border-color: #cccccc; -fx-border-radius: 5;");
-        panel.setPrefWidth(250);
+        panel.setPrefWidth(400);
 
-        Label title = new Label("Tile Offset Configuration");
+        Label title = new Label("Configuration");
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
 
         // Left Offset
-        HBox leftOffsetBox = createOffsetControl("Left Offset:", leftOffsetSpinner = new Spinner<>(0, 16, 0));
-//        leftOffsetSpinner.valueProperty().addListener(e -> applyConversion());
+        HBox leftOffsetBox = createOffsetControl("Left Offset", leftOffsetSpinner = new Spinner<>(0, 16, 0));
 
         // Right Offset
-        HBox rightOffsetBox = createOffsetControl("Right Offset:", rightOffsetSpinner = new Spinner<>(0, 16, 0));
-//        rightOffsetSpinner.valueProperty().addListener(e -> applyConversion());
+        HBox rightOffsetBox = createOffsetControl("Right Offset", rightOffsetSpinner = new Spinner<>(0, 16, 0));
 
         // Top Offset
-        HBox topOffsetBox = createOffsetControl("Top Offset:", topOffsetSpinner = new Spinner<>(0, 16, 0));
-//        topOffsetSpinner.valueProperty().addListener(e -> applyConversion());
+        HBox topOffsetBox = createOffsetControl("Top Offset", topOffsetSpinner = new Spinner<>(0, 16, 0));
 
         // Bottom Offset
-        HBox bottomOffsetBox = createOffsetControl("Bottom Offset:", bottomOffsetSpinner = new Spinner<>(0, 16, 0));
-//        bottomOffsetSpinner.valueProperty().addListener(e -> applyConversion());
+        HBox bottomOffsetBox = createOffsetControl("Bottom Offset", bottomOffsetSpinner = new Spinner<>(0, 16, 0));
 
 
+        hasClifCheckBox = new CheckBox("Has Clif");
+        HBox hasClifBox = createOffsetControl("",hasClifCheckBox);
+        hasClifCheckBox.selectedProperty().addListener(e -> onSourceSelectionChange());
 
-        HBox numberTileSet = createOffsetControl("Number of tileset Wanted:", numberTileSetWantedSpinner = new Spinner<>(1, 20, 3));
-//        tileSetXNumber.valueProperty().addListener(e -> applyConversion());
+        HBox numberTileSet = createOffsetControl("Number of tileset Wanted", numberTileSetWantedSpinner = new Spinner<>(1, 20, 1));
+        numberTileSetWantedSpinner.valueProperty().addListener(e -> onSourceSelectionChange());
 
-        HBox tileSetXNumber = createOffsetControl("Tileset X Number Offset:", tileSetXNumberSpinner = new Spinner<>(0, 16, 0));
-//        tileSetXNumber.valueProperty().addListener(e -> applyConversion());
+        HBox tileSetXNumber = createOffsetControl("Tileset X Number Offset", tileSetXNumberSpinner = new Spinner<>(0, 16, 0));
+        tileSetXNumberSpinner.valueProperty().addListener(e -> onSourceSelectionChange());
 
-        HBox tileSetYNumber = createOffsetControl("Tileset Y Number Offset:", tileSetYNumberSpinner = new Spinner<>(0, 16, 0));
-//        tileSetYNumber.valueProperty().addListener(e -> applyConversion());
+        HBox tileSetYNumber = createOffsetControl("Tileset Y Number Offset", tileSetYNumberSpinner = new Spinner<>(0, 16, 0));
+        tileSetYNumberSpinner.valueProperty().addListener(e -> onSourceSelectionChange());
+
 
         Button resetButton = new Button("Reset Offsets");
         resetButton.setStyle("-fx-font-size: 12; -fx-padding: 8;");
@@ -210,36 +249,34 @@ public class ImageConverterUI extends Application {
 
         panel.getChildren().addAll(
             title,
-            new Label(""),
             leftOffsetBox,
             rightOffsetBox,
             topOffsetBox,
             bottomOffsetBox,
             new Label("--------------"),
-            new Label("TileSet Size:96x144"),
+            new Label("TileSet Size:96x144(single tile:48)"),
+                hasClifBox,
                 numberTileSet,
                 tileSetXNumber,
                 tileSetYNumber,
-            new Label(""),
-            resetButton,
-            new Label(""),
             cleanConvertButton, convertAddButton, saveButton
         );
 
         return panel;
     }
 
-    private HBox createOffsetControl(String label, Spinner<Integer> spinner) {
+    private HBox createOffsetControl(String label, Control spinner) {
+
         HBox box = new HBox(10);
         box.setAlignment(Pos.CENTER_LEFT);
 
         Label lbl = new Label(label);
-        lbl.setPrefWidth(120);
+        lbl.setPrefWidth(300);
 
         spinner.setPrefWidth(80);
         spinner.setStyle("-fx-font-size: 11;");
 
-        box.getChildren().addAll(lbl, spinner);
+        box.getChildren().addAll(spinner,lbl);
         return box;
     }
 
@@ -269,6 +306,7 @@ public class ImageConverterUI extends Application {
                 originalImage = ImageIO.read(selectedFile);
                 sourceImageView.setImage(bufferedImageToFXImage(originalImage));
                 statusLabel.setText("Image loaded: " + selectedFile.getName() + " (" + originalImage.getWidth() + "x" + originalImage.getHeight() + ")");
+                sourceImageCursor.setVisible(true);
             } catch (Exception e) {
                 statusLabel.setText("Error loading image: " + e.getMessage());
             }
@@ -308,25 +346,37 @@ public class ImageConverterUI extends Application {
     }
 
     private void applyConversion(boolean clean) {
-        Integer tileSetXNumberSpinnerValue = tileSetXNumberSpinner.getValue();
-        Integer tileSetYNumberSpinnerValue = tileSetYNumberSpinner.getValue();
         Integer numberTileSetWanted = numberTileSetWantedSpinner.getValue();
 
-
-        List<Rectangle2D> rrectangles = new ArrayList<>();
+        List<Rectangle2D> rectangles = new ArrayList<>();
         for(int i = 0; i < numberTileSetWanted; i++) {
-            rrectangles.add(new Rectangle2D(48*2*(tileSetXNumberSpinnerValue+i), 48*3 * tileSetYNumberSpinnerValue, 48*2, 48*3));
+            rectangles.add(new Rectangle2D(sourceImageCursor.getLayoutX(), sourceImageCursor.getLayoutY(), sourceImageCursor.getWidth(), sourceImageCursor.getHeight()));
         }
 
         if(clean){
             outputImageViews.getChildren().clear();
         }
         Vec2d last = findLastOne();
-        for(int i = 0; i < rrectangles.size(); i++) {
-            applyConversions(rrectangles.get(i), last, i);
+        for(int i = 0; i < rectangles.size(); i++) {
+            applyConversions(rectangles.get(i), last, i);
         }
     }
 
+    private void onSourceImageViewClick(MouseEvent e) {
+        System.out.println("Clicked on source image at: " + e.getX() + ", " + e.getY());
+        tileSetXNumberSpinner.getValueFactory().setValue((int)(e.getX() / sourceImageCursor.getWidth()));
+        tileSetYNumberSpinner.getValueFactory().setValue((int)(e.getY() / sourceImageCursor.getHeight()));
+    }
+
+    private void onSourceSelectionChange(){
+        Integer tileSetXNumberSpinnerValue = tileSetXNumberSpinner.getValue();
+        Integer tileSetYNumberSpinnerValue = tileSetYNumberSpinner.getValue();
+        Integer numberTileSetWanted = numberTileSetWantedSpinner.getValue();
+        boolean hasClif = hasClifCheckBox.isSelected();
+        sourceImageCursor.setHeight(hasClif? 48*5 : 48*3);
+        sourceImageCursor.setLayoutX(48*2 * tileSetXNumberSpinnerValue);
+        sourceImageCursor.setLayoutY(sourceImageCursor.getHeight() * tileSetYNumberSpinnerValue);
+    }
 
 
     private void applyConversions(Rectangle2D rectangle2D, Vec2d last, int batchIndex) {
@@ -336,6 +386,8 @@ public class ImageConverterUI extends Application {
         }
 
         try {
+            ImageConverter converter = new ImageConverter();
+            converter.setClifMode(hasClifCheckBox.isSelected());
             // Update converter offsets
             converter.setOffsets(
                 leftOffsetSpinner.getValue(),
@@ -403,44 +455,6 @@ public class ImageConverterUI extends Application {
     }
 
 
-
-
-//    public static void mergeToPng(List<ImageView> imageViews, String outputPath) throws Exception {
-//        if (imageViews == null || imageViews.isEmpty()) {
-//            throw new IllegalArgumentException("图片列表不能为空");
-//        }
-//
-//        // 1. 计算总宽、最大高
-//        int totalWidth = 0;
-//        int maxHeight = 0;
-//        for (ImageView iv : imageViews) {
-//            Image img = iv.getImage();
-//            totalWidth += (int) img.getWidth();
-//            maxHeight = Math.max(maxHeight, (int) img.getHeight());
-//        }
-//
-//        // 2. 创建空白画布
-//        WritableImage result = new WritableImage(totalWidth, maxHeight);
-//        var writer = result.getPixelWriter();
-//
-//        // 3. 逐个横向绘制
-//        int x = 0;
-//        for (ImageView iv : imageViews) {
-//            Image img = iv.getImage();
-//            int w = (int) img.getWidth();
-//            int h = (int) img.getHeight();
-//            // 关键：用 setPixels 替代不存在的 drawImage
-//            writer.setPixels(
-//                    x, 0, w, h,
-//                    img.getPixelReader(),
-//                    0, 0
-//            );
-//            x += w;
-//        }
-//
-//        // 4. 保存为 PNG
-//        ImageIO.write(SwingFXUtils.fromFXImage(result, null), "png", new File(outputPath));
-//    }
 
     /**
      * 自动紧凑拼接 + 自动换行
