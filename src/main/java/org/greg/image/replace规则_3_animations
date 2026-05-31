@@ -1,3 +1,14 @@
 terrain = 2  -> 2,3,4,6 地形号
 _side = 2
 _corner = 2
+
+
+寻找规则:ExtResource == ext_resource 的id="12_nstql"
+[ext_resource type="Texture2D" uid="uid://d3r3if5x8h64r" path="res://scenes/test/rpgmarker_48_new_set/city ​_wall_1.png" id="12_nstql"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hf5ty"]
+texture = ExtResource("12_nstql")
+texture_region_size = Vector2i(48, 48)
+0:0/0 = 0
+.......
+.......
